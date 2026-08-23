@@ -1,0 +1,21 @@
+// PARÁMETROS LEGALES HISTÓRICOS Y VIGENTES (COLOMBIA)
+const HISTORICO_PARAMETROS = {
+    2021: { SMMLV: 908526, AUX_TRANSPORTE: 106454 },
+    2022: { SMMLV: 1000000, AUX_TRANSPORTE: 117172 },
+    2023: { SMMLV: 1160000, AUX_TRANSPORTE: 140606 },
+    2024: { SMMLV: 1300000, AUX_TRANSPORTE: 162000 },
+    2025: { SMMLV: 1423500, AUX_TRANSPORTE: 200000 },
+    2026: { SMMLV: 1750905, AUX_TRANSPORTE: 249095 }
+};
+
+const CONFIG = {
+    GOOGLE_SHEETS_WEBAPP_URL: "https://script.google.com/macros/s/AKfycbxeViIZoe4DJLHKydztW26I00FZJ21e09sbolp4Szzr_lRiPE2OUTVU3QpnyTqJ8pIh/exec"
+};
+
+function obtenerParametrosPorAnio(anio) {
+    const anioNum = parseInt(anio, 10);
+    if (HISTORICO_PARAMETROS[anioNum]) {
+        return HISTORICO_PARAMETROS[anioNum];
+    }
+    return HISTORICO_PARAMETROS[2026];
+}

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validador de Liquidación Laboral - Colombia</title>
+    <!-- Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Librerías jsPDF y AutoTable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
+    <!-- Librería QR Code generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <!-- Librería SheetJS (Exportar a Excel) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-4 md:p-8 font-sans">
+
+    <div class="max-w-5xl mx-auto bg-gray-800 p-6 md:p-8 rounded-xl shadow-2xl border border-gray-700 printable-area">
+        <h1 class="text-2xl font-bold text-white text-center mb-1 no-print">
+            Validador de Liquidación Laboral
+        </h1>
+        <p class="text-gray-400 text-sm text-center mb-6 no-print">
+            Proyección de prestaciones sociales conforme al CST de Colombia
+        </p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- FORMULARIO -->
+            <form id="form-liquidacion" class="space-y-4 no-print">
+                <h2 class="text-lg font-bold text-gray-200 border-b border-gray-700 pb-2">Datos del Contrato</h2>
+                
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1">
+                        Documento de Identidad <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" id="doc_identidad" value="1098765432" required
+                           class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 mb-1">
+                            Fecha de Inicio <span class="text-red-400">*</span>
+                        </label>
+                        <input type="date" id="fecha_inicio" value="2021-08-02" required
+                               class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 mb-1">
+                            Fecha de Fin Real <span class="text-red-400">*</span>
+                        </label>
+                        <input type="date" id="fecha_fin" value="2026-01-06" required
+                               class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- SALARIO Y VALOR BASE -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 mb-1">
+                            Salario Base (SMMLV) <span class="text-red-400">*</span>
+                        </label>
+                        <select id="factor_smmlv" required
+                                class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="1" selected>1 SMMLV</option>
+                            <option value="2">2 SMMLV</option>
+                            <option value="3">3 SMMLV</option>
+                            <option value="4">4 SMMLV</option>
+                            <option value="5">5 SMMLV</option>
+                            <option value="6">6 SMMLV</option>
+                            <option value="7">7 SMMLV</option>
+                            <option value="8">8 SMMLV</option>
+                            <option value="9">9 SMMLV</option>
+                            <option value="10">10 SMMLV</option>
+                            <option value="otro">Otro valor...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 mb-1">
+                            Valor Salario Base <span class="text-red-400">*</span>
+                        </label>
+                        <input type="text" id="salario_base_input" disabled required
+                               class="w-full border border-gray-700 bg-gray-800 text-gray-400 rounded-lg p-2 text-sm font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- CAMPO CONDICIONAL: ¿RECIBE AUXILIO DE TRANSPORTE? -->
+                <div id="campo_recibe_auxilio" class="hidden bg-gray-750 p-3 rounded-lg border border-gray-700">
+                    <label class="block text-xs font-semibold text-gray-300 mb-1">
+                        ¿Recibe Auxilio de Transporte?
+                    </label>
+                    <div class="flex items-center space-x-6 mt-1">
+                        <label class="inline-flex items-center text-sm cursor-pointer text-gray-200">
+                            <input type="radio" name="recibe_auxilio_radio" value="SI" checked class="form-radio text-blue-500">
+                            <span class="ml-2">Sí</span>
+                        </label>
+                        <label class="inline-flex items-center text-sm cursor-pointer text-gray-200">
+                            <input type="radio" name="recibe_auxilio_radio" value="NO" class="form-radio text-blue-500">
+                            <span class="ml-2">No</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 mb-1">
+                            Horas Extras, Recargos y Variables <span class="text-red-400">*</span>
+                        </label>
+                        <input type="text" id="variables_input" value="$ 0" placeholder="$ 0" required
+                               class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 mb-1">Aux. Transporte (Calculado)</label>
+                        <input type="text" id="aux_transporte_input" disabled value="$ 0" 
+                               class="w-full border border-gray-700 bg-gray-800 text-gray-400 rounded-lg p-2 text-sm font-semibold cursor-not-allowed">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 mb-1">
+                            Tipo de Contrato <span class="text-red-400">*</span>
+                        </label>
+                        <select id="tipo_contrato" required
+                                class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="Término Indefinido">Término Indefinido</option>
+                            <option value="Término Fijo">Término Fijo</option>
+                            <option value="Obra o Labor">Obra o Labor</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 mb-1">
+                            Motivo de Retiro <span class="text-red-400">*</span>
+                        </label>
+                        <select id="motivo_retiro" required
+                                class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="Renuncia Voluntaria">Renuncia Voluntaria</option>
+                            <option value="Despido sin Justa Causa" selected>Despido sin Justa Causa</option>
+                            <option value="Despido con Justa Causa">Despido con Justa Causa</option>
+                            <option value="Terminación de Contrato">Terminación de Contrato</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- CAMPO CONDICIONAL: FECHA PACTADA DE FIN -->
+                <div id="campo_fecha_pactada" class="hidden bg-gray-750 p-3 rounded-lg border border-gray-700">
+                    <label class="block text-xs font-semibold text-gray-300 mb-1">
+                        Fecha Pactada de Fin (Según Contrato) <span class="text-red-400">*</span>
+                    </label>
+                    <input type="date" id="fecha_pactada_fin" value="2026-06-30"
+                           class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+
+                <div id="campo_prima_anterior" class="hidden bg-gray-750 p-3 rounded-lg border border-gray-700">
+                    <label class="block text-xs font-semibold text-gray-300 mb-1">
+                        ¿Fue pagada la prima del semestre anterior?
+                    </label>
+                    <div class="flex items-center space-x-6 mt-1">
+                        <label class="inline-flex items-center text-sm cursor-pointer text-gray-200">
+                            <input type="radio" name="prima_pagada" value="SI" checked class="form-radio text-blue-500">
+                            <span class="ml-2">Sí, ya fue pagada</span>
+                        </label>
+                        <label class="inline-flex items-center text-sm cursor-pointer text-gray-200">
+                            <input type="radio" name="prima_pagada" value="NO" class="form-radio text-blue-500">
+                            <span class="ml-2">No, está pendiente</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-gray-750 border border-gray-700 rounded-lg space-y-3">
+                    <label class="block text-xs font-semibold text-gray-300">
+                        ¿Ha disfrutado o le han pagado vacaciones anteriormente durante el contrato?
+                    </label>
+                    <div class="flex items-center space-x-6">
+                        <label class="inline-flex items-center text-sm cursor-pointer text-gray-200">
+                            <input type="radio" name="vacaciones_disfrutadas" value="NO" checked class="form-radio text-blue-500">
+                            <span class="ml-2">No, ninguna</span>
+                        </label>
+                        <label class="inline-flex items-center text-sm cursor-pointer text-gray-200">
+                            <input type="radio" name="vacaciones_disfrutadas" value="SI" class="form-radio text-blue-500">
+                            <span class="ml-2">Sí, ya disfruté</span>
+                        </label>
+                    </div>
+
+                    <div id="despliegue_vacaciones" class="hidden pt-2 border-t border-gray-600 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-300 mb-1">
+                                Unidad de Tiempo <span class="text-red-400">*</span>
+                            </label>
+                            <select id="unidad_vacaciones" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <option value="dias">Días de vacaciones</option>
+                                <option value="semanas" selected>Semanas de vacaciones</option>
+                                <option value="periodos">Períodos / Años completos</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-300 mb-1">
+                                Cantidad Disfrutada <span class="text-red-400">*</span>
+                            </label>
+                            <select id="cantidad_vacaciones" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" id="btn-submit-oculto" class="hidden"></button>
+            </form>
+
+            <!-- VISTA PREVIA Y ACCIÓN -->
+            <div class="bg-gray-850 p-6 rounded-xl border border-gray-700 flex flex-col justify-between print-full-width">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-200 border-b border-gray-700 pb-2 mb-4">Cálculo Proyectado en Vivo</h2>
+                    
+                    <div class="text-xs text-gray-400 mb-4 space-y-1">
+                        <p><strong>Días Laborados Totales:</strong> <span id="res_dias" class="text-gray-200">0</span> días</p>
+                        <p><strong>Salario Base:</strong> <span id="res_salario" class="text-gray-200">$ 0</span></p>
+                        <p><strong>Variables / Horas Extras:</strong> <span id="res_variables" class="text-gray-200">$ 0</span></p>
+                        <p><strong>Base Liquidación:</strong> <span id="res_base_liq" class="text-gray-200">$ 0</span></p>
+                    </div>
+
+                    <table class="w-full text-xs text-left text-gray-300 border-collapse">
+                        <thead>
+                            <tr class="border-b border-gray-700 bg-gray-800 text-gray-300">
+                                <th class="p-2">Concepto</th>
+                                <th class="p-2 text-right">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-700">
+                            <tr id="fila_cesantias_anterior" class="hidden bg-orange-950/40 text-orange-200">
+                                <td class="p-2">Cesantías año anterior (<span id="dias_cesantias_ant_txt">0</span> días)</td>
+                                <td id="val_cesantias_anterior" class="p-2 text-right font-mono">$ 0</td>
+                            </tr>
+                            <tr id="fila_intereses_anterior" class="hidden bg-orange-950/40 text-orange-200">
+                                <td class="p-2">Intereses s/ Cesantías año anterior (12% anual)</td>
+                                <td id="val_intereses_anterior" class="p-2 text-right font-mono">$ 0</td>
+                            </tr>
+                            <tr id="fila_cesantias_actual" class="hidden">
+                                <td class="p-2">Cesantías año actual (<span id="dias_cesantias_txt">0</span> días)</td>
+                                <td id="val_cesantias" class="p-2 text-right font-mono">$ 0</td>
+                            </tr>
+                            <tr id="fila_intereses_actual" class="hidden">
+                                <td class="p-2">Intereses s/ Cesantías año actual (12% anual)</td>
+                                <td id="val_intereses" class="p-2 text-right font-mono">$ 0</td>
+                            </tr>
+                            <tr id="fila_prima_actual" class="hidden">
+                                <td class="p-2">Prima de Servicios Actual</td>
+                                <td id="val_prima" class="p-2 text-right font-mono">$ 0</td>
+                            </tr>
+                            <tr id="fila_prima_anterior" class="hidden bg-yellow-950/40 text-yellow-200">
+                                <td class="p-2">Prima Pendiente Anterior</td>
+                                <td id="val_prima_anterior" class="p-2 text-right font-mono">$ 0</td>
+                            </tr>
+                            <tr id="fila_vacaciones" class="hidden">
+                                <td class="p-2">Vacaciones Pendientes (<span id="dias_vacaciones_txt">0</span> días hábiles eq.)</td>
+                                <td id="val_vacaciones" class="p-2 text-right font-mono">$ 0</td>
+                            </tr>
+                            <tr id="fila_indemnizacion" class="hidden bg-red-950/40 text-red-300 font-semibold border-t border-b border-red-900/50">
+                                <td class="p-2">Indemnización por Finalización</td>
+                                <td id="val_indemnizacion" class="p-2 text-right font-mono text-red-200">$ 0</td>
+                            </tr>
+                            <tr class="font-bold text-blue-200 bg-blue-950/50 text-sm border-t border-blue-900/60">
+                                <td class="p-2">TOTAL NETO PROYECTADO:</td>
+                                <td id="val_total" class="p-2 text-right font-mono text-blue-400">$ 0</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- BOTONES DE ACCIÓN -->
+                <div class="mt-6 flex flex-col sm:flex-row gap-2 no-print">
+                    <button type="button" id="btn-limpiar" 
+                            class="w-full sm:w-1/4 bg-gray-700 hover:bg-gray-600 text-gray-200 font-bold py-2.5 px-3 rounded-lg shadow text-xs transition duration-200 flex items-center justify-center">
+                        <span>Restablecer</span>
+                    </button>
+                    <button type="button" id="btn-imprimir" 
+                            class="w-full sm:w-1/4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-2.5 px-3 rounded-lg shadow text-xs transition duration-200 flex items-center justify-center">
+                        <span>Imprimir</span>
+                    </button>
+                    <button type="button" id="btn-exportar-excel" 
+                            class="w-full sm:w-1/4 bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 px-3 rounded-lg shadow text-xs transition duration-200 flex items-center justify-center">
+                        <span>Excel</span>
+                    </button>
+                    <button type="button" id="btn-descargar-pdf" 
+                            class="w-full sm:w-1/4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-3 rounded-lg shadow text-xs transition duration-200 flex items-center justify-center">
+                        <span>PDF</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- CONTENEDOR TEMPORAL PARA QR -->
+    <div id="qrcode-container" class="hidden"></div>
+
+    <!-- Scripts -->
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
